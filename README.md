@@ -1,2 +1,2 @@
-# ebhfc-trail-tracker
+index.html
 Everyday Destination
