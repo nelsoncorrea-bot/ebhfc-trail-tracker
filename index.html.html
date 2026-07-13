@@ -491,26 +491,73 @@ function geocodeDest(d){
 /* ══════════════════════════════════════════
    GPS
 ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   GPS — works both standalone and inside Wix iFrame
+   Uses direct geolocation when available;
+   falls back gracefully when blocked by iframe policy.
+══════════════════════════════════════════ */
 function requestGPS(){
   const st=document.getElementById('gps-status');
   st.textContent='Requesting location...';
-  if(!navigator.geolocation){ skipGPS(); return; }
-  navigator.geolocation.getCurrentPosition(pos=>{
-    gpsEnabled=true;
-    userLat=pos.coords.latitude; userLon=pos.coords.longitude;
-    st.textContent='✅ Location found!';
-    setTimeout(()=>goToCategories(),600);
-  },()=>{ st.textContent='Could not get location — continuing without GPS.'; setTimeout(skipGPS,900); },{enableHighAccuracy:true,timeout:10000});
+  // Try direct geolocation first (works on GitHub Pages, direct file, and
+  // any host that sets allow="geolocation" on the iframe)
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        gpsEnabled=true;
+        userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+        st.textContent='✅ Location found!';
+        setTimeout(()=>goToCategories(),600);
+      },
+      err=>{
+        // Blocked by iframe policy (Wix classic) — try postMessage fallback
+        if(err.code===1||err.code===2){
+          st.textContent='Trying alternate location method...';
+          tryPostMessageGPS(st);
+        } else {
+          st.textContent='Could not get location — continuing without GPS.';
+          setTimeout(skipGPS,900);
+        }
+      },
+      {enableHighAccuracy:true,timeout:8000}
+    );
+  } else {
+    tryPostMessageGPS(st);
+  }
 }
+
+// postMessage fallback: ask the Wix parent page for location
+// Requires the Wix page to have a small Velo snippet (auto-injected via HTML embed)
+function tryPostMessageGPS(st){
+  let resolved=false;
+  // Listen for location coming back from parent
+  window.addEventListener('message',function handler(e){
+    if(e.data&&e.data.type==='REACH_LOCATION'){
+      window.removeEventListener('message',handler);
+      resolved=true;
+      gpsEnabled=true;
+      userLat=e.data.lat; userLon=e.data.lon;
+      st.textContent='✅ Location found!';
+      setTimeout(()=>goToCategories(),600);
+    }
+  });
+  // Ask parent for location
+  try{ window.parent.postMessage({type:'REACH_REQUEST_LOCATION'},'*'); }catch(e){}
+  // Timeout — if parent doesn't respond in 6s, continue without GPS
+  setTimeout(()=>{ if(!resolved){ st.textContent='Location unavailable — continuing without GPS.'; skipGPS(); } },6000);
+}
+
 function skipGPS(){ gpsEnabled=false; goToCategories(); }
 
 function startWatchGPS(){
-  if(!navigator.geolocation||!gpsEnabled) return;
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    userLat=pos.coords.latitude; userLon=pos.coords.longitude;
-    if(selGMap&&selUserMarker) selUserMarker.setPosition({lat:userLat,lng:userLon});
-    document.getElementById('loc-chip').textContent='📍 GPS Active';
-  },null,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+  if(!gpsEnabled) return;
+  if(navigator.geolocation){
+    watchId=navigator.geolocation.watchPosition(pos=>{
+      userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+      if(selGMap&&selUserMarker) selUserMarker.setPosition({lat:userLat,lng:userLon});
+      document.getElementById('loc-chip').textContent='📍 GPS Active';
+    },null,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+  }
 }
 function stopWatchGPS(){ if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; } }
 
@@ -705,7 +752,7 @@ async function startTracking(){
       navigator.geolocation.getCurrentPosition(pos=>{
         userLat=pos.coords.latitude; userLon=pos.coords.longitude;
         resolve();
-      },resolve,{enableHighAccuracy:true,timeout:5000});
+      },resolve,{enableHighAccuracy:true,timeout:5000,maximumAge:0});
     });
   }
 
