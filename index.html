@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>REACH Trail Tracker Widget</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#2a9d8f;--teal-d:#1f7a6d;--teal-l:#e6f7f5;
+  --navy:#264653;--muted:#5a7470;--border:#c8e6e0;
+  --bg:#f8fbfa;--card:#fff;--text:#1a2e2b;--r:12px;
+  --sh:0 2px 12px rgba(42,157,143,.09);
+}
+html,body{height:100%;font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+#app{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex;animation:fi .22s ease}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideBack{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
+.slide-in{animation:slideIn .22s ease}
+.slide-back{animation:slideBack .22s ease}
+.hdr{background:var(--teal);color:#fff;padding:.65rem .85rem;display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:50px}
+.hdr-logo{width:32px;height:32px;background:#fff;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-logo img{width:28px;height:28px;object-fit:contain}
+.hdr-title{flex:1;min-width:0}
+.hdr-title h1{font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title p{font-size:9px;opacity:.8;font-weight:500}
+.hdr-r{margin-left:auto;display:flex;gap:5px;flex-shrink:0}
+.hbtn{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 8px;font-family:inherit;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,.3)}
+.back-btn{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;padding:4px 9px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0}
+.back-btn:hover{background:rgba(255,255,255,.28)}
+.center-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;background:var(--bg)}
+.center-body h2{font-size:19px;font-weight:900;margin-bottom:.5rem}
+.center-body p{font-size:12.5px;color:var(--muted);font-weight:600;max-width:300px;line-height:1.5;margin-bottom:1.25rem}
+.gps-icon{width:76px;height:76px;background:var(--teal-l);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.1rem;border:2px solid var(--border)}
+.gps-bullets{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:.9rem;margin-bottom:1.1rem;width:100%;max-width:320px;text-align:left}
+.gps-bullet{display:flex;align-items:flex-start;gap:8px;margin-bottom:.55rem;font-size:11.5px;font-weight:600;color:var(--text);line-height:1.4}
+.gps-bullet:last-child{margin-bottom:0}
+.gps-status{margin-top:.6rem;font-size:11px;font-weight:700;min-height:16px;color:var(--teal)}
+.btn-gps{width:100%;max-width:320px;padding:11px;background:var(--teal);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:.55rem}
+.btn-skip{width:100%;max-width:320px;padding:8px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:9px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.cat-screen-body{flex:1;overflow-y:auto;padding:.7rem;background:var(--bg)}
+.stats-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:.7rem}
+.sm-box{background:var(--card);border-radius:9px;padding:.5rem .55rem;text-align:center;border:1px solid var(--border)}
+.sm-box .sv{font-size:15px;font-weight:900;color:var(--teal)}
+.sm-box .sl{font-size:8.5px;color:var(--muted);font-weight:600}
+.cat-intro{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:.65rem}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.cat-card{background:var(--card);border:2px solid var(--border);border-radius:13px;padding:1rem .85rem .9rem;cursor:pointer;transition:.18s;display:flex;flex-direction:column;align-items:flex-start;gap:.3rem;position:relative;overflow:hidden}
+.cat-card:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.09)}
+.cat-card:active{transform:scale(.98)}
+.cat-card-icon{font-size:26px;line-height:1}
+.cat-card-name{font-size:12.5px;font-weight:800;line-height:1.2}
+.cat-card-count{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:9px;margin-top:.05rem}
+.cat-card-arrow{position:absolute;bottom:.7rem;right:.8rem;font-size:13px;opacity:.4}
+.subcat-screen-body{flex:1;overflow-y:auto;padding:.7rem;background:var(--bg)}
+.subcat-grid{display:flex;flex-direction:column;gap:.45rem}
+.subcat-card{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:.65rem .85rem;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:.7rem}
+.subcat-card:hover{border-color:var(--teal);background:var(--teal-l)}
+.subcat-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.subcat-info{flex:1}
+.subcat-name{font-size:12.5px;font-weight:800}
+.subcat-count{font-size:10px;color:var(--muted);font-weight:600;margin-top:1px}
+.subcat-arrow{font-size:13px;color:var(--muted)}
+.map-screen-inner{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.map-wrap{position:relative;flex-shrink:0;height:240px;overflow:hidden}
+#gmap-sel{position:absolute;inset:0;width:100%;height:100%}
+.map-top{position:absolute;top:5px;left:5px;right:5px;display:flex;justify-content:space-between;gap:4px;z-index:10;pointer-events:none}
+.map-chip{background:rgba(255,255,255,.93);border-radius:6px;padding:3px 7px;font-size:9.5px;font-weight:700;color:var(--text);border:1px solid var(--border);pointer-events:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:195px}
+.map-legend{position:absolute;bottom:5px;right:5px;background:rgba(255,255,255,.93);border-radius:8px;padding:5px 8px;font-size:9px;border:1px solid var(--border);z-index:10}
+.li{display:flex;align-items:center;gap:4px;margin-bottom:2px;color:var(--text);font-weight:700}
+.li:last-child{margin-bottom:0}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+@keyframes gpsPulse{from{opacity:1}to{opacity:.35}}
+.gps-dot-legend{width:7px;height:7px;border-radius:50%;background:#1a5fa8;flex-shrink:0;animation:gpsPulse .9s infinite alternate}
+.dest-panel{flex:1;overflow-y:auto;background:var(--bg)}
+.dest-section{padding:.55rem .7rem .2rem}
+.dest-section h3{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.38rem}
+.dest-grid{display:flex;flex-direction:column;gap:4px;margin-bottom:.3rem}
+.dc{background:var(--card);border:2px solid var(--border);border-radius:9px;padding:.5rem .7rem;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:6px}
+.dc:hover{border-color:var(--teal);background:var(--teal-l)}
+.dc.sel{border-color:var(--teal);background:var(--teal-l)}
+.dc-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.dc-info{flex:1;min-width:0}
+.dc-name{font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-sub{font-size:9px;color:var(--muted);margin-top:1px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-r{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.dc-dist{font-size:10px;font-weight:800;color:var(--teal)}
+.dc-tag{font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px}
+.bottom-bar{background:var(--card);border-top:2px solid var(--border);padding:.55rem .7rem;flex-shrink:0}
+.go-btn{width:100%;padding:10px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+.go-btn:disabled{background:#b0cdc9;color:#7aa4a0;cursor:not-allowed}
+.go-btn:not(:disabled):hover{background:var(--teal-d)}
+.trk-hdr{background:var(--teal);color:#fff;padding:.6rem .85rem;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.pulse{width:9px;height:9px;border-radius:50%;background:#7effd4;flex-shrink:0;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.78)}}
+.trk-map{position:relative;background:#d4ede7;flex:1;min-height:160px;max-height:260px}
+#gmap-trk{position:absolute;inset:0;width:100%;height:100%}
+.trk-gps-badge{position:absolute;top:6px;left:6px;background:rgba(255,255,255,.93);border-radius:7px;padding:3px 8px;font-size:9.5px;font-weight:700;color:var(--navy);border:1px solid var(--border);display:flex;align-items:center;gap:4px;z-index:10}
+.trk-gps-dot{width:7px;height:7px;border-radius:50%;background:#27ae60;flex-shrink:0;animation:pulse 1s infinite}
+.trk-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;padding:.65rem}
+.ts{background:var(--card);border-radius:9px;border:1.5px solid var(--border);padding:.5rem .75rem}
+.tsv{font-size:19px;font-weight:900;color:var(--teal)}
+.tsl{font-size:9.5px;color:var(--muted);margin-top:1px;font-weight:600}
+.prog-wrap{padding:0 .7rem .6rem}
+.prog-top{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-bottom:3px;font-weight:700}
+.prog-bar{height:7px;background:var(--teal-l);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.prog-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .5s}
+.stop-btn{margin:0 .7rem .65rem;padding:10px;background:#e76f51;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0}
+.stop-btn:hover{background:#c45a3e}
+.log-body{flex:1;padding:.7rem;overflow-y:auto;background:var(--bg)}
+.wk{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:.8rem;margin-bottom:.55rem;box-shadow:var(--sh)}
+.wk-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.3rem}
+.wk-hdr h4{font-size:12px;font-weight:800}
+.wk-mi{font-size:17px;font-weight:900;color:var(--teal)}
+.wk-routes{font-size:9.5px;color:var(--muted);margin-bottom:.5rem;line-height:1.55;font-weight:600}
+.bar-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.bar-d{width:24px;font-size:9px;color:var(--muted);font-weight:700}
+.bar-t{flex:1;height:6px;background:var(--teal-l);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.bar-f{height:100%;background:var(--teal);border-radius:3px;transition:width .5s}
+.bar-v{width:26px;text-align:right;font-size:9px;font-weight:700;color:var(--text)}
+.toast{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;padding:7px 14px;border-radius:8px;font-size:11.5px;font-weight:700;z-index:9999;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 14px rgba(42,157,143,.28);max-width:90%;text-align:center}
+.toast.show{opacity:1}
+.route-loading{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--teal);border:1px solid var(--border);z-index:20;display:none}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- GPS PERMISSION -->
+<div class="screen active" id="s-gps">
+  <div class="hdr">
+    <div class="hdr-logo"><img src="https://static.wixstatic.com/media/df59a3_3dcc9356a378496f8918247d202ddb04~mv2.png/v1/crop/x_101,y_101,w_296,h_296/fill/w_168,h_168,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1.png" width="28" height="28" style="object-fit:contain" alt="EBHFC" onerror="this.style.display='none'"/></div>
+    <div class="hdr-title"><h1>REACH Trail Tracker</h1><p>East Boston Healthy Families Collaborative</p></div>
+  </div>
+  <div style="background:#fff;padding:.45rem .85rem .4rem;border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:center;margin-bottom:.3rem">In partnership with</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 5px">
+      <span style="font-size:9.5px;font-weight:800;color:#002868">Boston Public Health Commission</span>
+      <span style="font-size:9px;color:#ccc">·</span>
+      <span style="font-size:9.5px;font-weight:800;color:#00685E">NeighborHealth</span>
+      <span style="font-size:9px;color:#ccc">·</span>
+      <span style="font-size:9.5px;font-weight:800;color:#3a7d44">WalkMassachusetts</span>
+      <span style="font-size:9px;color:#ccc">·</span>
+      <span style="font-size:9.5px;font-weight:800;color:#003f72">CDC REACH</span>
+    </div>
+  </div>
+  <div class="center-body">
+    <div class="gps-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+    <h2>Enable Location Access</h2>
+    <p>Allow location access for real-time route tracking and accurate distances.</p>
+    <div class="gps-bullets">
+      <div class="gps-bullet"><span style="font-size:15px">📍</span><span><strong>Real-time tracking</strong> — see yourself move on the map</span></div>
+      <div class="gps-bullet"><span style="font-size:15px">📏</span><span><strong>Accurate distances</strong> — exact mileage from your location</span></div>
+      <div class="gps-bullet"><span style="font-size:15px">🔒</span><span><strong>Private</strong> — only used during active tracking</span></div>
+    </div>
+    <button class="btn-gps" onclick="requestGPS()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      Allow Location Access
+    </button>
+    <button class="btn-skip" onclick="skipGPS()">Continue without GPS</button>
+    <div class="gps-status" id="gps-status"></div>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="screen" id="s-cats">
+  <div class="hdr">
+    <div class="hdr-logo"><img src="https://static.wixstatic.com/media/df59a3_3dcc9356a378496f8918247d202ddb04~mv2.png/v1/crop/x_101,y_101,w_296,h_296/fill/w_168,h_168,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1.png" width="28" height="28" style="object-fit:contain" alt="EBHFC" onerror="this.style.display='none'"/></div>
+    <div class="hdr-title"><h1>Everyday Destinations</h1><p>East Boston, MA</p></div>
+    <div class="hdr-r">
+      <button class="hbtn" onclick="goLog()">📊 Miles</button>
+      <button class="hbtn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="cat-screen-body">
+    <div class="stats-mini">
+      <div class="sm-box"><div class="sv" id="sw-mi">0.0</div><div class="sl">miles this week</div></div>
+      <div class="sm-box"><div class="sv" id="sw-rt">0</div><div class="sl">routes done</div></div>
+      <div class="sm-box"><div class="sv" id="sw-st">0</div><div class="sl">active days</div></div>
+    </div>
+    <p class="cat-intro">Choose a category to explore destinations near you in East Boston.</p>
+    <div class="cat-grid" id="cat-grid"></div>
+  </div>
+</div>
+
+<!-- SUBCATEGORIES -->
+<div class="screen" id="s-subcats">
+  <div class="hdr">
+    <div class="hdr-logo"><img src="https://static.wixstatic.com/media/df59a3_3dcc9356a378496f8918247d202ddb04~mv2.png/v1/crop/x_101,y_101,w_296,h_296/fill/w_168,h_168,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1.png" width="28" height="28" style="object-fit:contain" alt="EBHFC" onerror="this.style.display='none'"/></div>
+    <div class="hdr-title"><h1 id="subcat-hdr-title">Category</h1><p id="subcat-hdr-sub">Select a type</p></div>
+    <div class="hdr-r"><button class="back-btn" onclick="show('s-cats','slide-back')">← Back</button></div>
+  </div>
+  <div class="subcat-screen-body"><div class="subcat-grid" id="subcat-grid"></div></div>
+</div>
+
+<!-- MAP + DESTINATIONS -->
+<div class="screen" id="s-map">
+  <div class="hdr">
+    <div class="hdr-logo"><img src="https://static.wixstatic.com/media/df59a3_3dcc9356a378496f8918247d202ddb04~mv2.png/v1/crop/x_101,y_101,w_296,h_296/fill/w_168,h_168,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1.png" width="28" height="28" style="object-fit:contain" alt="EBHFC" onerror="this.style.display='none'"/></div>
+    <div class="hdr-title"><h1 id="map-hdr-title">Destinations</h1><p id="map-hdr-sub">East Boston, MA</p></div>
+    <div class="hdr-r"><button class="back-btn" onclick="show('s-subcats','slide-back')">← Back</button></div>
+  </div>
+  <div class="map-screen-inner">
+    <div class="map-wrap">
+      <div id="gmap-sel"></div>
+      <div class="map-top">
+        <div class="map-chip" id="loc-chip">📍 East Boston, MA</div>
+        <div class="map-chip" id="dist-chip">Select a destination</div>
+      </div>
+      <div class="map-legend">
+        <div class="li"><div class="gps-dot-legend"></div>Your location</div>
+        <div class="li"><div class="dot" id="legend-color"></div><span id="legend-label">Destinations</span></div>
+      </div>
+      <div class="route-loading" id="route-loading">⏳ Getting walking route…</div>
+    </div>
+    <div class="dest-panel" id="dest-panel"></div>
+    <div class="bottom-bar">
+      <button class="go-btn" id="go-btn" disabled onclick="startTracking()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Walking to This Destination
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVE TRACKING -->
+<div class="screen" id="s-track">
+  <div class="trk-hdr">
+    <div class="pulse"></div>
+    <span style="font-size:12px;font-weight:700;flex:1">Tracking your walk...</span>
+    <span id="tk-name" style="font-size:9.5px;opacity:.8;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+  </div>
+  <div class="trk-map">
+    <div id="gmap-trk"></div>
+    <div class="trk-gps-badge" id="trk-gps-badge">
+      <div class="trk-gps-dot"></div>
+      <span id="trk-gps-txt">GPS Active</span>
+    </div>
+  </div>
+  <div class="trk-stats">
+    <div class="ts"><div class="tsv" id="t-dist">0.00</div><div class="tsl">miles walked</div></div>
+    <div class="ts"><div class="tsv" id="t-time">00:00</div><div class="tsl">elapsed time</div></div>
+    <div class="ts"><div class="tsv" id="t-pace">—</div><div class="tsl">min / mile</div></div>
+    <div class="ts"><div class="tsv" id="t-cal">0</div><div class="tsl">approx. calories</div></div>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog-top"><span>Progress to destination</span><span id="prog-pct">0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <button class="stop-btn" onclick="stopTracking()">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    Finish &amp; Save Route
+  </button>
+</div>
+
+<!-- WEEKLY LOG -->
+<div class="screen" id="s-log">
+  <div class="hdr">
+    <div class="hdr-logo"><img src="https://static.wixstatic.com/media/df59a3_3dcc9356a378496f8918247d202ddb04~mv2.png/v1/crop/x_101,y_101,w_296,h_296/fill/w_168,h_168,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/1.png" width="28" height="28" style="object-fit:contain" alt="EBHFC" onerror="this.style.display='none'"/></div>
+    <div class="hdr-title"><h1>My Weekly Miles</h1><p>REACH walking history</p></div>
+    <div class="hdr-r"><button class="back-btn" onclick="show('s-cats','slide-back')">← Back</button></div>
+  </div>
+  <div class="log-body" id="log-body"></div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   ⚠️  REPLACE THIS WITH YOUR REAL API KEY
+══════════════════════════════════════════ */
+const GMAPS_API_KEY = 'AIzaSyDepYBhQNsnYrXQkcztjy_aGyX-0eufm3Q';
+
+/* ══════════════════════════════════════════
+   CATEGORY + DESTINATION DATA
+══════════════════════════════════════════ */
+const CAT_CFG={
+  Education_Community:{label:'Education & Community',icon:'🎓',hex:'#457b9d',bg:'#eaf2f8',desc:'Schools, youth & community centers'},
+  Essential_Needs:    {label:'Essential Needs',      icon:'🏪',hex:'#52b788',bg:'#ecf9f2',desc:'Grocery, pharmacy, banks & services'},
+  Food_Access:        {label:'Food Access',           icon:'🥦',hex:'#f4a261',bg:'#fff7ed',desc:'Pantries, markets & nutrition'},
+  Health_Wellness:    {label:'Health & Wellness',     icon:'❤️',hex:'#e63946',bg:'#fff0f0',desc:'Clinics, parks, fitness & recreation'},
+  Transportation:     {label:'Transportation',        icon:'🚇',hex:'#7b5ea7',bg:'#f3effe',desc:'MBTA Blue Line stations'},
+};
+const SUBCAT_LABELS={
+  Clinics:'🏥 Clinics',Community_centers:'🏛️ Community Centers',Youth_Development:'🌟 Youth Development',
+  Nutrition_Program:'🥗 Nutrition Programs',Food_pantries:'🍞 Food Pantries',Farmers_markets:'🥕 Farmers Markets',
+  Fitness_centers:'💪 Fitness Centers',Recreation:'⚽ Recreation',Parks:'🌳 Parks',Playgrounds:'🛝 Playgrounds',
+  MBTA_stations:'🚇 MBTA Stations',Schools:'📚 Schools',
+  Grocery_stores:'🛒 Grocery Stores',Corner_stores_bodegas:'🏪 Bodegas',Pharmacies:'💊 Pharmacies',
+  Banks_ATMs:'🏦 Banks & ATMs',Post_Offices:'📬 Post Offices',Laundromats:'👕 Laundromats',
+};
+
+// Each destination has a real street address used for geocoding + routing
+const DESTS=[
+  {id:0,  name:'NeighborHealth',                   addr:'10 Gove St, East Boston, MA 02128',               cat:'Health_Wellness',    sub:'Clinics',              hood:'Maverick Square', lat:42.3698,lon:-71.0397},
+  {id:1,  name:'NeighborHealth',                   addr:'20 Maverick Square, East Boston, MA 02128',        cat:'Health_Wellness',    sub:'Clinics',              hood:'Maverick Square', lat:42.3694,lon:-71.0392},
+  {id:2,  name:'Community Resources & Wellness Ctr',addr:'282 Meridian St, East Boston, MA 02128',          cat:'Education_Community',sub:'Community_centers',    hood:'Central Square',  lat:42.3706,lon:-71.0398},
+  {id:3,  name:'YMCA East Boston',                 addr:'215 Bremen St, East Boston, MA 02128',             cat:'Education_Community',sub:'Community_centers',    hood:'Jeffries Point',  lat:42.3729,lon:-71.0438},
+  {id:4,  name:'Piers Park Sailing',               addr:'95 Marginal St, East Boston, MA 02128',            cat:'Education_Community',sub:'Community_centers',    hood:'Jeffries Point',  lat:42.3724,lon:-71.0448},
+  {id:5,  name:'EASTIE Coalition',                 addr:'151 Orleans St, East Boston, MA 02128',            cat:'Education_Community',sub:'Community_centers',    hood:'Jeffries Point',  lat:42.3718,lon:-71.0428},
+  {id:6,  name:'Maverick Landing Comm. Svcs',      addr:'31 Liverpool St, East Boston, MA 02128',           cat:'Education_Community',sub:'Community_centers',    hood:'Maverick Square', lat:42.3688,lon:-71.0388},
+  {id:7,  name:'NOAH',                             addr:'143 Border St, East Boston, MA 02128',             cat:'Education_Community',sub:'Community_centers',    hood:'Central Square',  lat:42.3710,lon:-71.0405},
+  {id:8,  name:'Paris Street Community Center',    addr:'112 Paris St, East Boston, MA 02128',              cat:'Education_Community',sub:'Community_centers',    hood:'Jeffries Point',  lat:42.3726,lon:-71.0410},
+  {id:9,  name:'East Boston Social Center',        addr:'68 Central Square, East Boston, MA 02128',         cat:'Education_Community',sub:'Community_centers',    hood:'Central Square',  lat:42.3703,lon:-71.0402},
+  {id:10, name:'Mutual Aid - Ayuda Mutua',         addr:'434 Chelsea St, East Boston, MA 02128',            cat:'Education_Community',sub:'Community_centers',    hood:'Day Square',      lat:42.3752,lon:-71.0355},
+  {id:11, name:'ZUMIX',                            addr:'260 Sumner St, East Boston, MA 02128',             cat:'Education_Community',sub:'Youth_Development',    hood:'Jeffries Point',  lat:42.3733,lon:-71.0450},
+  {id:12, name:'Veronica Robles Cultural Ctr',     addr:'282 Meridian St, East Boston, MA 02128',           cat:'Education_Community',sub:'Youth_Development',    hood:'Central Square',  lat:42.3706,lon:-71.0400},
+  {id:13, name:'WIC',                              addr:'250 Sumner St, East Boston, MA 02128',             cat:'Food_Access',        sub:'Nutrition_Program',    hood:'Jeffries Point',  lat:42.3732,lon:-71.0449},
+  {id:14, name:"Let's Get Movin'",                 addr:'250 Sumner St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Jeffries Point',  lat:42.3732,lon:-71.0448},
+  {id:15, name:'Piers Park Sailing',               addr:'95 Marginal St, East Boston, MA 02128',            cat:'Health_Wellness',    sub:'Recreation',           hood:'Jeffries Point',  lat:42.3724,lon:-71.0447},
+  {id:16, name:'Soccer Without Borders',           addr:'13 Bennington St, East Boston, MA 02128',          cat:'Health_Wellness',    sub:'Recreation',           hood:'Central Square',  lat:42.3703,lon:-71.0392},
+  {id:17, name:'Project Bread',                    addr:'145 Border St, East Boston, MA 02128',             cat:'Food_Access',        sub:'Food_pantries',        hood:'Central Square',  lat:42.3710,lon:-71.0407},
+  {id:18, name:'Community Resources & Wellness Ctr',addr:'282 Meridian St, East Boston, MA 02128',          cat:'Food_Access',        sub:'Food_pantries',        hood:'Central Square',  lat:42.3706,lon:-71.0399},
+  {id:19, name:'BCYF Paris St.',                   addr:'112 Paris St, East Boston, MA 02128',              cat:'Food_Access',        sub:'Food_pantries',        hood:'Jeffries Point',  lat:42.3726,lon:-71.0411},
+  {id:20, name:'Grace Federated Church',           addr:'760 Saratoga St, East Boston, MA 02128',           cat:'Food_Access',        sub:'Food_pantries',        hood:'Orient Heights',  lat:42.3815,lon:-71.0268},
+  {id:21, name:'ABCD East Boston APAC',            addr:'21 Meridian St, East Boston, MA 02128',            cat:'Food_Access',        sub:'Food_pantries',        hood:'Maverick Square', lat:42.3693,lon:-71.0395},
+  {id:22, name:'Outreach Van Project',             addr:'197 Border St, East Boston, MA 02128',             cat:'Food_Access',        sub:'Food_pantries',        hood:'Central Square',  lat:42.3708,lon:-71.0405},
+  {id:23, name:'YMCA / UCB Distribution',          addr:'282 Meridian St, East Boston, MA 02128',           cat:'Food_Access',        sub:'Food_pantries',        hood:'Central Square',  lat:42.3706,lon:-71.0398},
+  {id:24, name:'EB High School (Food)',            addr:'86 White St, East Boston, MA 02128',               cat:'Food_Access',        sub:'Food_pantries',        hood:'Eagle Hill',      lat:42.3808,lon:-71.0349},
+  {id:25, name:'Central Community Church',         addr:'50 Bennington St, East Boston, MA 02128',          cat:'Food_Access',        sub:'Food_pantries',        hood:'Bennington St',   lat:42.3755,lon:-71.0395},
+  {id:26, name:'YMCA East Boston (Food)',          addr:'215 Bremen St, East Boston, MA 02128',             cat:'Food_Access',        sub:'Food_pantries',        hood:'Jeffries Point',  lat:42.3729,lon:-71.0438},
+  {id:27, name:'EB Community Soup Kitchen',        addr:'28 Paris St, East Boston, MA 02128',               cat:'Food_Access',        sub:'Food_pantries',        hood:'Maverick Square', lat:42.3722,lon:-71.0415},
+  {id:28, name:'Centro La Esperanza',              addr:'28 Paris St, East Boston, MA 02128',               cat:'Food_Access',        sub:'Food_pantries',        hood:'Maverick Square', lat:42.3722,lon:-71.0414},
+  {id:29, name:'East Boston Farmers Market',       addr:'210 Border St, East Boston, MA 02128',             cat:'Food_Access',        sub:'Farmers_markets',      hood:'Central Square',  lat:42.3708,lon:-71.0403},
+  {id:30, name:'YMCA East Boston',                 addr:'215 Bremen St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Jeffries Point',  lat:42.3729,lon:-71.0437},
+  {id:31, name:'BCYF Paris St.',                   addr:'112 Paris St, East Boston, MA 02128',              cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Jeffries Point',  lat:42.3726,lon:-71.0410},
+  {id:32, name:'Beacon Hill Athletic Clubs',       addr:'252 Meridian St, East Boston, MA 02128',           cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Central Square',  lat:42.3705,lon:-71.0396},
+  {id:33, name:'Planet Fitness',                   addr:'175 McClellan Hwy, East Boston, MA 02128',         cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Orient Heights',  lat:42.3830,lon:-71.0265},
+  {id:34, name:'EastieFit',                        addr:'256 Marginal St, East Boston, MA 02128',           cat:'Health_Wellness',    sub:'Fitness_centers',      hood:'Jeffries Point',  lat:42.3720,lon:-71.0450},
+  {id:35, name:'American Legion Park',             addr:'25 Glendon St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Parks',                hood:'Eagle Hill',      lat:42.3812,lon:-71.0340},
+  {id:36, name:'Bremen Street Community Park',     addr:'344 Bremen St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Parks',                hood:'Jeffries Point',  lat:42.3732,lon:-71.0425},
+  {id:37, name:'LoPresti Park',                    addr:'33 Sumner St, East Boston, MA 02128',              cat:'Health_Wellness',    sub:'Parks',                hood:'Maverick Square', lat:42.3718,lon:-71.0445},
+  {id:38, name:'Central Square Park',              addr:'216 Border St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Parks',                hood:'Central Square',  lat:42.3708,lon:-71.0403},
+  {id:39, name:'Constitution Beach',               addr:'Constitution Beach, Winthrop, MA 02152',           cat:'Health_Wellness',    sub:'Parks',                hood:'Orient Heights',  lat:42.3845,lon:-71.0230},
+  {id:40, name:'East Boston Memorial Park',        addr:'143 Porter St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Parks',                hood:'Jeffries Point',  lat:42.3727,lon:-71.0382},
+  {id:41, name:'Piers Park',                       addr:'95 Marginal St, East Boston, MA 02128',            cat:'Health_Wellness',    sub:'Parks',                hood:'Jeffries Point',  lat:42.3724,lon:-71.0448},
+  {id:42, name:'American Legion Playground',       addr:'25 Glendon St, East Boston, MA 02128',             cat:'Health_Wellness',    sub:'Playgrounds',          hood:'Eagle Hill',      lat:42.3812,lon:-71.0341},
+  {id:43, name:'Noyes Playground',                 addr:'86 Boardman St, East Boston, MA 02128',            cat:'Health_Wellness',    sub:'Playgrounds',          hood:'Orient Heights',  lat:42.3820,lon:-71.0280},
+  {id:44, name:'McLean Playground',                addr:'550 Bennington St, East Boston, MA 02128',         cat:'Health_Wellness',    sub:'Playgrounds',          hood:'Orient Heights',  lat:42.3833,lon:-71.0272},
+  {id:45, name:'Maverick Station',                 addr:'Maverick Station, East Boston, MA 02128',          cat:'Transportation',     sub:'MBTA_stations',        hood:'Maverick Square', lat:42.3691,lon:-71.0393},
+  {id:46, name:'Airport Station',                  addr:'Airport Station MBTA, East Boston, MA 02128',      cat:'Transportation',     sub:'MBTA_stations',        hood:'Jeffries Point',  lat:42.3740,lon:-71.0310},
+  {id:47, name:'Wood Island Station',              addr:'Wood Island Station MBTA, East Boston, MA 02128',  cat:'Transportation',     sub:'MBTA_stations',        hood:'Day Square',      lat:42.3785,lon:-71.0318},
+  {id:48, name:'Orient Heights Station',           addr:'Orient Heights Station MBTA, East Boston, MA 02128',cat:'Transportation',   sub:'MBTA_stations',        hood:'Orient Heights',  lat:42.3870,lon:-71.0247},
+  {id:49, name:'Suffolk Downs Station',            addr:'Suffolk Downs Station MBTA, East Boston, MA 02128',cat:'Transportation',    sub:'MBTA_stations',        hood:'Orient Heights',  lat:42.3900,lon:-71.0180},
+  {id:50, name:"Shaw's",                           addr:'246 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Grocery_stores',       hood:'Plaza Liberty',   lat:42.3700,lon:-71.0403},
+  {id:51, name:"Sava's Market",                    addr:'150 Bennington St, East Boston, MA 02128',         cat:'Essential_Needs',    sub:'Grocery_stores',       hood:'Bennington St',   lat:42.3752,lon:-71.0393},
+  {id:52, name:'El Valle de La Sultana',           addr:'121 Bennington St, East Boston, MA 02128',         cat:'Essential_Needs',    sub:'Grocery_stores',       hood:'Bennington St',   lat:42.3750,lon:-71.0395},
+  {id:53, name:'Los Paisanos Market',              addr:'11 Meridian St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Grocery_stores',       hood:'Maverick Square', lat:42.3693,lon:-71.0394},
+  {id:54, name:"Bella's Market",                   addr:'75 Maverick Square, East Boston, MA 02128',        cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Maverick Square', lat:42.3692,lon:-71.0390},
+  {id:55, name:'Maverick Street Market',           addr:'207 Maverick St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Jeffries Point',  lat:42.3730,lon:-71.0418},
+  {id:56, name:"Anthony's Market",                 addr:'407 Meridian St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Shore Plaza',     lat:42.3745,lon:-71.0365},
+  {id:57, name:'Two Brothers Market',              addr:'51 Trenton St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Shore Plaza',     lat:42.3715,lon:-71.0358},
+  {id:58, name:'East Boston Farm Stand',           addr:'75 Meridian St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Maverick Square', lat:42.3698,lon:-71.0395},
+  {id:59, name:'Mana Super Market',                addr:'351 Meridian St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Shore Plaza',     lat:42.3742,lon:-71.0370},
+  {id:60, name:'Station Market',                   addr:'9 Maverick Square, East Boston, MA 02128',         cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Maverick Square', lat:42.3691,lon:-71.0393},
+  {id:61, name:'EBO & Co. Market',                 addr:'110 Meridian St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Maverick Square', lat:42.3700,lon:-71.0396},
+  {id:62, name:'La Union Market',                  addr:'105 Chelsea St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Chelsea St',      lat:42.3683,lon:-71.0380},
+  {id:63, name:'East Boston Corner Market',        addr:'83 Bennington St, East Boston, MA 02128',          cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Bennington St',   lat:42.3750,lon:-71.0397},
+  {id:64, name:'Neptune Convenience',              addr:'3 Neptune Rd, East Boston, MA 02128',              cat:'Essential_Needs',    sub:'Corner_stores_bodegas',hood:'Day Square',      lat:42.3765,lon:-71.0328},
+  {id:65, name:'NeighborHealth Pharmacy',          addr:'10 Gove St, East Boston, MA 02128',                cat:'Essential_Needs',    sub:'Pharmacies',           hood:'Maverick Square', lat:42.3698,lon:-71.0397},
+  {id:66, name:'Walgreens',                        addr:'1 Central Square, East Boston, MA 02128',          cat:'Essential_Needs',    sub:'Pharmacies',           hood:'Central Square',  lat:42.3702,lon:-71.0401},
+  {id:67, name:'CVS',                              addr:'210 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Pharmacies',           hood:'Plaza Liberty',   lat:42.3700,lon:-71.0403},
+  {id:68, name:'Rockland Trust Bank',              addr:'10 Meridian St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Maverick Square', lat:42.3692,lon:-71.0394},
+  {id:69, name:'Chase Bank',                       addr:'31 Kelly Square, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Central Square',  lat:42.3703,lon:-71.0401},
+  {id:70, name:'Eastern Bank',                     addr:'246 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Central Square',  lat:42.3700,lon:-71.0403},
+  {id:71, name:'Citizens Bank',                    addr:'26 Central Square, East Boston, MA 02128',         cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Central Square',  lat:42.3703,lon:-71.0402},
+  {id:72, name:'TD Bank',                          addr:'36 Maverick Square, East Boston, MA 02128',        cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Maverick Square', lat:42.3692,lon:-71.0391},
+  {id:73, name:'Bank of America ATM',              addr:'3 Porter St, East Boston, MA 02128',               cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Central Square',  lat:42.3708,lon:-71.0405},
+  {id:74, name:'Santander Bank',                   addr:'2 Meridian St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Maverick Square', lat:42.3693,lon:-71.0394},
+  {id:75, name:'Bank of America ATM',              addr:'47 Maverick Square, East Boston, MA 02128',        cat:'Essential_Needs',    sub:'Banks_ATMs',           hood:'Maverick Square', lat:42.3692,lon:-71.0390},
+  {id:76, name:'US Post Office',                   addr:'50 Meridian St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Post_Offices',         hood:'Maverick Square', lat:42.3695,lon:-71.0395},
+  {id:77, name:'Postmail Plus',                    addr:'53 Meridian St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Post_Offices',         hood:'Maverick Square', lat:42.3695,lon:-71.0395},
+  {id:78, name:'UPS Store',                        addr:'2 Neptune Rd, East Boston, MA 02128',              cat:'Essential_Needs',    sub:'Post_Offices',         hood:'Day Square',      lat:42.3765,lon:-71.0327},
+  {id:79, name:'Super Laundry Two',                addr:'141 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Laundromats',          hood:'Central Square',  lat:42.3710,lon:-71.0408},
+  {id:80, name:'Lapels Laundromat',                addr:'220 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Laundromats',          hood:'Shore Plaza',     lat:42.3705,lon:-71.0402},
+  {id:81, name:'Neptune Laundromat',               addr:'489 Saratoga St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Laundromats',          hood:'Day Square',      lat:42.3762,lon:-71.0335},
+  {id:82, name:'NimNim Laundry',                   addr:'141 Border St, East Boston, MA 02128',             cat:'Essential_Needs',    sub:'Laundromats',          hood:'Central Square',  lat:42.3710,lon:-71.0408},
+  {id:83, name:'Laundry Club',                     addr:'52 Bennington St, East Boston, MA 02128',          cat:'Essential_Needs',    sub:'Laundromats',          hood:'Bennington St',   lat:42.3755,lon:-71.0397},
+  {id:84, name:'Burbujas Laundry',                 addr:'115 Maverick St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Laundromats',          hood:'Maverick Square', lat:42.3728,lon:-71.0415},
+  {id:85, name:'Eagle Hill Laundry',               addr:'105 Trenton St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Laundromats',          hood:'Eagle Hill',      lat:42.3810,lon:-71.0350},
+  {id:86, name:'Frankies Laundry',                 addr:'411 Meridian St, East Boston, MA 02128',           cat:'Essential_Needs',    sub:'Laundromats',          hood:'Shore Plaza',     lat:42.3745,lon:-71.0365},
+  {id:87, name:'Corner Laundry',                   addr:'197 Chelsea St, East Boston, MA 02128',            cat:'Essential_Needs',    sub:'Laundromats',          hood:'Chelsea St',      lat:42.3685,lon:-71.0373},
+  {id:88, name:'East Boston High School',          addr:'86 White St, East Boston, MA 02128',               cat:'Education_Community',sub:'Schools',              hood:'Eagle Hill',      lat:42.3808,lon:-71.0349},
+  {id:89, name:"Hugh R O'Donnell Elementary",      addr:'33 Trenton St, East Boston, MA 02128',             cat:'Education_Community',sub:'Schools',              hood:'Eagle Hill',      lat:42.3812,lon:-71.0360},
+  {id:90, name:'Mario Umana K8',                   addr:'312 Border St, East Boston, MA 02128',             cat:'Education_Community',sub:'Schools',              hood:'Shore Plaza',     lat:42.3708,lon:-71.0360},
+  {id:91, name:'Patrick J. Kennedy Elementary',    addr:'343 Saratoga St, East Boston, MA 02128',           cat:'Education_Community',sub:'Schools',              hood:'Day Square',      lat:42.3762,lon:-71.0330},
+  {id:92, name:'James Otis School',                addr:'218 Marion St, East Boston, MA 02128',             cat:'Education_Community',sub:'Schools',              hood:'Chelsea St',      lat:42.3685,lon:-71.0368},
+  {id:93, name:'Donald McKay School',              addr:'122 Cottage St, East Boston, MA 02128',            cat:'Education_Community',sub:'Schools',              hood:'Jeffries Point',  lat:42.3735,lon:-71.0440},
+  {id:94, name:'Samuel Adams Elementary',          addr:'165 Webster St, East Boston, MA 02128',            cat:'Education_Community',sub:'Schools',              hood:'Jeffries Point',  lat:42.3720,lon:-71.0430},
+  {id:95, name:'Dante Alighieri Montessori',       addr:'37 Gove St, East Boston, MA 02128',                cat:'Education_Community',sub:'Schools',              hood:'Chelsea St',      lat:42.3693,lon:-71.0395},
+  {id:96, name:'Manassah E. Bradley School',       addr:'110 Beachview Rd, East Boston, MA 02128',          cat:'Education_Community',sub:'Schools',              hood:'Orient Heights',  lat:42.3855,lon:-71.0235},
+  {id:97, name:'Curtis Guild Elementary',          addr:'195 Leyden St, East Boston, MA 02128',             cat:'Education_Community',sub:'Schools',              hood:'Orient Heights',  lat:42.3862,lon:-71.0252},
+  {id:98, name:'Excel Academy',                    addr:'401 Bremen St, East Boston, MA 02128',             cat:'Education_Community',sub:'Schools',              hood:'Day Square',      lat:42.3748,lon:-71.0365},
+  {id:99, name:'EB Central Catholic School',       addr:'69 London St, East Boston, MA 02128',              cat:'Education_Community',sub:'Schools',              hood:'Maverick Square', lat:42.3688,lon:-71.0388},
+];
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let selId=null, activeCat=null, activeSub=null;
+let gpsEnabled=false, watchId=null, trackInt=null, elapsed=0;
+let userLat=42.3694, userLon=-71.0393;
+let trkTotalDist=0, trkPrevLat=null, trkPrevLon=null, destTotalDist=0;
+let appState={weekMi:0,totalRt:0,streak:0};
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// Google Maps objects
+let gmapsReady=false;
+let selGMap=null, selDirRenderer=null, selUserMarker=null, selDestMarkers={};
+let trkGMap=null, trkDirRenderer=null, trkUserMarker=null, trkPathLine=null, trkPoints=[];
+let dirService=null, geocoder=null;
+// Cache geocoded positions to avoid repeated API calls
+const geoCache={};
+
+/* ══════════════════════════════════════════
+   GOOGLE MAPS LOADER
+══════════════════════════════════════════ */
+function loadGoogleMaps(){
+  return new Promise((resolve)=>{
+    if(gmapsReady){ resolve(); return; }
+    window.__gmapsCallback=()=>{ gmapsReady=true; dirService=new google.maps.DirectionsService(); geocoder=new google.maps.Geocoder(); resolve(); };
+    const s=document.createElement('script');
+    s.src='https://maps.googleapis.com/maps/api/js?key='+GMAPS_API_KEY+'&callback=__gmapsCallback&libraries=geometry';
+    s.async=true; s.defer=true;
+    document.head.appendChild(s);
+  });
+}
+
+/* ══════════════════════════════════════════
+   LOCAL STORAGE
+══════════════════════════════════════════ */
+function loadLocalStats(){
+  try{ const s=JSON.parse(localStorage.getItem('reach_stats')||'{}'); appState.weekMi=s.weekMi||0; appState.totalRt=s.totalRt||0; appState.streak=s.streak||0; }catch(e){}
+}
+function saveLocalStats(){
+  try{ localStorage.setItem('reach_stats',JSON.stringify({weekMi:appState.weekMi,totalRt:appState.totalRt,streak:appState.streak})); }catch(e){}
+}
+function loadLocalHistory(){ try{ return JSON.parse(localStorage.getItem('reach_history')||'[]'); }catch(e){ return []; } }
+function saveLocalRoute(r){ try{ const h=loadLocalHistory(); h.unshift(r); localStorage.setItem('reach_history',JSON.stringify(h.slice(0,60))); }catch(e){} }
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+window.addEventListener('load',()=>{
+  loadLocalStats(); refreshStats();
+  show('s-gps','slide-in');
+});
+
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
+function show(id,anim){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active','slide-in','slide-back'));
+  const el=document.getElementById(id);
+  if(anim) el.classList.add(anim);
+  el.classList.add('active');
+  if(id==='s-map'&&selGMap) setTimeout(()=>google.maps.event.trigger(selGMap,'resize'),60);
+  if(id==='s-track'&&trkGMap) setTimeout(()=>google.maps.event.trigger(trkGMap,'resize'),60);
+}
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
+function refreshStats(){ document.getElementById('sw-mi').textContent=(appState.weekMi||0).toFixed(1); document.getElementById('sw-rt').textContent=appState.totalRt||0; document.getElementById('sw-st').textContent=appState.streak||0; }
+function haversine(la1,lo1,la2,lo2){ const R=6371000,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180,a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2; return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); }
+function mToMi(m){ return (m/1609.34).toFixed(2); }
+function doLogout(){ if(confirm('Sign out of REACH Tracker?')){ localStorage.removeItem('reach_stats'); location.reload(); } }
+
+/* ══════════════════════════════════════════
+   GEOCODING — resolve address to lat/lon
+   (uses lat/lon fallback if geocode fails)
+══════════════════════════════════════════ */
+function geocodeDest(d){
+  return new Promise(resolve=>{
+    if(geoCache[d.id]){ resolve(geoCache[d.id]); return; }
+    geocoder.geocode({address:d.addr},(results,status)=>{
+      if(status==='OK'&&results[0]){
+        const loc=results[0].geometry.location;
+        geoCache[d.id]={lat:loc.lat(),lon:loc.lng()};
+      } else {
+        geoCache[d.id]={lat:d.lat,lon:d.lon}; // fallback
+      }
+      resolve(geoCache[d.id]);
+    });
+  });
+}
+
+/* ══════════════════════════════════════════
+   GPS
+══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   GPS — works both standalone and inside Wix iFrame
+   Uses direct geolocation when available;
+   falls back gracefully when blocked by iframe policy.
+══════════════════════════════════════════ */
+function requestGPS(){
+  const st=document.getElementById('gps-status');
+  st.textContent='Requesting location...';
+  // Try direct geolocation first (works on GitHub Pages, direct file, and
+  // any host that sets allow="geolocation" on the iframe)
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        gpsEnabled=true;
+        userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+        st.textContent='✅ Location found!';
+        setTimeout(()=>goToCategories(),600);
+      },
+      err=>{
+        // Blocked by iframe policy (Wix classic) — try postMessage fallback
+        if(err.code===1||err.code===2){
+          st.textContent='Trying alternate location method...';
+          tryPostMessageGPS(st);
+        } else {
+          st.textContent='Could not get location — continuing without GPS.';
+          setTimeout(skipGPS,900);
+        }
+      },
+      {enableHighAccuracy:true,timeout:8000}
+    );
+  } else {
+    tryPostMessageGPS(st);
+  }
+}
+
+// postMessage fallback: ask the Wix parent page for location
+// Requires the Wix page to have a small Velo snippet (auto-injected via HTML embed)
+function tryPostMessageGPS(st){
+  let resolved=false;
+  // Listen for location coming back from parent
+  window.addEventListener('message',function handler(e){
+    if(e.data&&e.data.type==='REACH_LOCATION'){
+      window.removeEventListener('message',handler);
+      resolved=true;
+      gpsEnabled=true;
+      userLat=e.data.lat; userLon=e.data.lon;
+      st.textContent='✅ Location found!';
+      setTimeout(()=>goToCategories(),600);
+    }
+  });
+  // Ask parent for location
+  try{ window.parent.postMessage({type:'REACH_REQUEST_LOCATION'},'*'); }catch(e){}
+  // Timeout — if parent doesn't respond in 6s, continue without GPS
+  setTimeout(()=>{ if(!resolved){ st.textContent='Location unavailable — continuing without GPS.'; skipGPS(); } },6000);
+}
+
+function skipGPS(){ gpsEnabled=false; goToCategories(); }
+
+function startWatchGPS(){
+  if(!gpsEnabled) return;
+  if(navigator.geolocation){
+    watchId=navigator.geolocation.watchPosition(pos=>{
+      userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+      if(selGMap&&selUserMarker) selUserMarker.setPosition({lat:userLat,lng:userLon});
+      document.getElementById('loc-chip').textContent='📍 GPS Active';
+    },null,{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+  }
+}
+function stopWatchGPS(){ if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; } }
+
+/* ══════════════════════════════════════════
+   CATEGORIES / SUBCATEGORIES
+══════════════════════════════════════════ */
+async function goToCategories(){
+  await loadGoogleMaps();
+  renderCatGrid(); refreshStats();
+  show('s-cats','slide-in');
+  if(gpsEnabled) startWatchGPS();
+}
+
+function renderCatGrid(){
+  const counts={};
+  DESTS.forEach(d=>{ counts[d.cat]=(counts[d.cat]||0)+1; });
+  const sorted=Object.entries(CAT_CFG).sort((a,b)=>a[1].label.localeCompare(b[1].label));
+  document.getElementById('cat-grid').innerHTML=sorted.map(([cid,cfg])=>
+    '<div class="cat-card" onclick="selectCat(\''+cid+'\')" style="border-color:'+cfg.hex+'22">'+
+    '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:'+cfg.hex+';border-radius:13px 13px 0 0"></div>'+
+    '<div class="cat-card-icon">'+cfg.icon+'</div>'+
+    '<div class="cat-card-name" style="color:'+cfg.hex+'">'+cfg.label+'</div>'+
+    '<div style="font-size:9.5px;color:var(--muted);font-weight:600">'+cfg.desc+'</div>'+
+    '<div class="cat-card-count" style="background:'+cfg.bg+';color:'+cfg.hex+'">'+(counts[cid]||0)+' places</div>'+
+    '<div class="cat-card-arrow">›</div></div>').join('');
+}
+
+function selectCat(catId){
+  activeCat=catId; activeSub=null;
+  const cfg=CAT_CFG[catId];
+  document.getElementById('subcat-hdr-title').textContent=cfg.label;
+  document.getElementById('subcat-hdr-sub').textContent='Choose a type of destination';
+  const filtered=DESTS.filter(d=>d.cat===catId);
+  const subs=[...new Set(filtered.map(d=>d.sub))].sort((a,b)=>(SUBCAT_LABELS[a]||a).replace(/^[^\w]+/,'').localeCompare((SUBCAT_LABELS[b]||b).replace(/^[^\w]+/,'')));
+  const counts={}; filtered.forEach(d=>{ counts[d.sub]=(counts[d.sub]||0)+1; });
+  document.getElementById('subcat-grid').innerHTML=
+    '<div class="subcat-card" onclick="selectSub(\'all\')"><div class="subcat-icon" style="background:'+cfg.bg+';font-size:18px">'+cfg.icon+'</div><div class="subcat-info"><div class="subcat-name">All '+cfg.label+'</div><div class="subcat-count">'+filtered.length+' destinations</div></div><div class="subcat-arrow">›</div></div>'+
+    subs.map(sub=>'<div class="subcat-card" onclick="selectSub(\''+sub+'\')"><div class="subcat-icon" style="background:'+cfg.bg+'">'+(SUBCAT_LABELS[sub]||sub).split(' ')[0]+'</div><div class="subcat-info"><div class="subcat-name">'+(SUBCAT_LABELS[sub]||sub).replace(/^[^\w]+/,'')+'</div><div class="subcat-count">'+(counts[sub]||0)+' destination'+(counts[sub]!==1?'s':'')+'</div></div><div class="subcat-arrow">›</div></div>').join('');
+  show('s-subcats','slide-in');
+}
+
+function selectSub(sub){
+  activeSub=sub; selId=null;
+  const cfg=CAT_CFG[activeCat];
+  document.getElementById('map-hdr-title').textContent=sub==='all'?cfg.label:(SUBCAT_LABELS[sub]||sub).replace(/^[^\w]+/,'').trim();
+  document.getElementById('map-hdr-sub').textContent=cfg.icon+' '+cfg.label+' · East Boston';
+  document.getElementById('legend-color').style.background=cfg.hex;
+  document.getElementById('legend-label').textContent=cfg.label;
+  document.getElementById('go-btn').disabled=true;
+  document.getElementById('dist-chip').textContent='Select a destination';
+  document.getElementById('loc-chip').textContent=gpsEnabled?'📍 GPS Active':'📍 East Boston, MA';
+  initOrResetSelMap();
+  renderMapMarkers();
+  renderDestPanel();
+  show('s-map','slide-in');
+}
+
+/* ══════════════════════════════════════════
+   GOOGLE MAP — selection screen
+══════════════════════════════════════════ */
+function gmapStyle(){
+  return [{featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},{featureType:'transit.station',elementType:'labels',stylers:[{visibility:'simplified'}]}];
+}
+
+function initOrResetSelMap(){
+  const center={lat:userLat,lng:userLon};
+  if(!selGMap){
+    selGMap=new google.maps.Map(document.getElementById('gmap-sel'),{
+      center,zoom:15,styles:gmapStyle(),
+      disableDefaultUI:true,zoomControl:true,gestureHandling:'cooperative'
+    });
+    selDirRenderer=new google.maps.DirectionsRenderer({
+      suppressMarkers:true,
+      polylineOptions:{strokeColor:'#2a9d8f',strokeWeight:5,strokeOpacity:.85}
+    });
+    selDirRenderer.setMap(selGMap);
+    // Blue pulsing user dot
+    selUserMarker=new google.maps.Marker({
+      position:center, map:selGMap, zIndex:100,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:'#1a5fa8',fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5}
+    });
+  } else {
+    selGMap.setCenter(center);
+    selGMap.setZoom(15);
+    selUserMarker.setPosition(center);
+    selDirRenderer.setDirections({routes:[]});
+  }
+  // Clear old destination markers
+  Object.values(selDestMarkers).forEach(m=>m.setMap(null));
+  selDestMarkers={};
+}
+
+function renderMapMarkers(){
+  Object.values(selDestMarkers).forEach(m=>m.setMap(null));
+  selDestMarkers={};
+  let filtered=DESTS.filter(d=>d.cat===activeCat);
+  if(activeSub&&activeSub!=='all') filtered=filtered.filter(d=>d.sub===activeSub);
+  const cfg=CAT_CFG[activeCat];
+  const bounds=new google.maps.LatLngBounds();
+  bounds.extend({lat:userLat,lng:userLon});
+  filtered.forEach(d=>{
+    const isSel=selId===d.id;
+    const pos={lat:d.lat,lng:d.lon};
+    const marker=new google.maps.Marker({
+      position:pos, map:selGMap, zIndex:isSel?10:5,
+      icon:{path:google.maps.SymbolPath.CIRCLE,scale:isSel?11:8,fillColor:cfg.hex,fillOpacity:isSel?1:.8,strokeColor:'#fff',strokeWeight:isSel?3:2}
+    });
+    marker.addListener('click',()=>selDest(d.id));
+    selDestMarkers[d.id]=marker;
+    bounds.extend(pos);
+  });
+  if(filtered.length&&selId===null) selGMap.fitBounds(bounds,{top:20,right:20,bottom:20,left:20});
+}
+
+function renderDestPanel(){
+  let filtered=DESTS.filter(d=>d.cat===activeCat);
+  if(activeSub&&activeSub!=='all') filtered=filtered.filter(d=>d.sub===activeSub);
+  const cfg=CAT_CFG[activeCat];
+  filtered=filtered.slice().sort((a,b)=>haversine(userLat,userLon,a.lat,a.lon)-haversine(userLat,userLon,b.lat,b.lon));
+  let html='';
+  if(!activeSub||activeSub==='all'){
+    const grps={}; filtered.forEach(d=>{ (grps[d.sub]=grps[d.sub]||[]).push(d); });
+    Object.entries(grps).forEach(([sub,grp])=>{
+      html+='<div class="dest-section"><h3>'+(SUBCAT_LABELS[sub]||sub)+' <span style="color:'+cfg.hex+'">('+grp.length+')</span></h3><div class="dest-grid">'+grp.map(d=>destCard(d,cfg)).join('')+'</div></div>';
+    });
+  } else {
+    html='<div class="dest-section"><div class="dest-grid">'+filtered.map(d=>destCard(d,cfg)).join('')+'</div></div>';
+  }
+  document.getElementById('dest-panel').innerHTML=html||'<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:12px;font-weight:600">No destinations in this view.</div>';
+}
+
+function destCard(d,cfg){
+  const isSel=selId===d.id;
+  const dist=mToMi(haversine(userLat,userLon,d.lat,d.lon));
+  const sub=(SUBCAT_LABELS[d.sub]||d.sub).replace(/^[^\w\s]/,'').trim();
+  return '<div class="dc'+(isSel?' sel':'')+'" data-dest-id="'+d.id+'" onclick="selDest('+d.id+')">'+
+    '<div class="dc-icon" style="background:'+cfg.bg+'">'+cfg.icon+'</div>'+
+    '<div class="dc-info"><div class="dc-name">'+d.name+'</div><div class="dc-sub">'+d.addr.replace(', East Boston, MA 02128','').replace(', Winthrop, MA 02152','')+'</div></div>'+
+    '<div class="dc-r"><span class="dc-dist">'+dist+' mi</span><span class="dc-tag" style="background:'+cfg.bg+';color:'+cfg.hex+'">'+sub+'</span></div></div>';
+}
+
+async function selDest(id){
+  selId=id;
+  const d=DESTS.find(x=>x.id===id);
+  document.querySelectorAll('.dc').forEach(el=>el.classList.remove('sel'));
+  const el=document.querySelector('.dc[data-dest-id="'+id+'"]');
+  if(el){ el.classList.add('sel'); el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  document.getElementById('go-btn').disabled=false;
+  document.getElementById('dist-chip').textContent=(d.name.length>18?d.name.slice(0,17)+'…':d.name)+' · …';
+  renderMapMarkers();
+
+  // Show loading indicator
+  const rl=document.getElementById('route-loading');
+  rl.style.display='block';
+
+  // Geocode real address first, then get directions from current user location
+  const geoPos=await geocodeDest(d);
+
+  dirService.route({
+    origin:{lat:userLat,lng:userLon},
+    destination:{lat:geoPos.lat,lng:geoPos.lon},
+    travelMode:google.maps.TravelMode.WALKING
+  },(result,status)=>{
+    rl.style.display='none';
+    if(status==='OK'){
+      selDirRenderer.setDirections(result);
+      const leg=result.routes[0].legs[0];
+      const distText=leg.distance.text;
+      const durText=leg.duration.text;
+      document.getElementById('dist-chip').textContent=(d.name.length>14?d.name.slice(0,13)+'…':d.name)+' · '+distText+' ('+durText+')';
+      // Store route distance for tracking progress
+      d._routeDistMeters=leg.distance.value;
+    } else {
+      const fallback=mToMi(haversine(userLat,userLon,d.lat,d.lon));
+      document.getElementById('dist-chip').textContent=(d.name.length>18?d.name.slice(0,17)+'…':d.name)+' · ~'+fallback+' mi';
+    }
+  });
+}
+
+/* ══════════════════════════════════════════
+   TRACKING — Google Map with live user dot
+══════════════════════════════════════════ */
+async function startTracking(){
+  if(selId===null) return;
+  const d=DESTS.find(x=>x.id===selId);
+  document.getElementById('tk-name').textContent=d.name;
+  elapsed=0; trkPoints=[]; trkTotalDist=0; trkPrevLat=null; trkPrevLon=null;
+
+  // Re-read user GPS position at start of walk (most accurate start point)
+  if(gpsEnabled&&navigator.geolocation){
+    await new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(pos=>{
+        userLat=pos.coords.latitude; userLon=pos.coords.longitude;
+        resolve();
+      },resolve,{enableHighAccuracy:true,timeout:5000,maximumAge:0});
+    });
+  }
+
+  const geoPos=await geocodeDest(d);
+  destTotalDist=d._routeDistMeters||haversine(userLat,userLon,geoPos.lat,geoPos.lon);
+
+  show('s-track','slide-in');
+  document.getElementById('trk-gps-txt').textContent=gpsEnabled?'GPS Active':'GPS Off (simulated)';
+  document.getElementById('prog-fill').style.width='0%';
+  document.getElementById('prog-pct').textContent='0%';
+
+  setTimeout(()=>{
+    initTrkMap(d,geoPos);
+    // Get directions for background route line
+    dirService.route({
+      origin:{lat:userLat,lng:userLon},
+      destination:{lat:geoPos.lat,lng:geoPos.lon},
+      travelMode:google.maps.TravelMode.WALKING
+    },(result,status)=>{
+      if(status==='OK') trkDirRenderer.setDirections(result);
+    });
+  },60);
+
+  trkPoints=[[userLat,userLon]];
+
+  if(gpsEnabled&&navigator.geolocation){
+    watchId=navigator.geolocation.watchPosition(pos=>{
+      const lat=pos.coords.latitude,lon=pos.coords.longitude;
+      if(trkPrevLat!==null){ const step=haversine(trkPrevLat,trkPrevLon,lat,lon); if(step>2) trkTotalDist+=step; }
+      trkPrevLat=lat; trkPrevLon=lon; userLat=lat; userLon=lon;
+      trkPoints.push([lat,lon]);
+      if(trkUserMarker) trkUserMarker.setPosition({lat,lng:lon});
+      if(trkPathLine) trkPathLine.setPath(trkPoints.map(p=>({lat:p[0],lng:p[1]})));
+      if(trkGMap) trkGMap.panTo({lat,lng:lon});
+      updateTrackStats(d,geoPos);
+    },()=>{ document.getElementById('trk-gps-txt').textContent='GPS signal lost'; },{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+  }
+  trackInt=setInterval(()=>{ elapsed++; updateTrackStats(d,geoPos); },1000);
+}
+
+function initTrkMap(d,geoPos){
+  if(trkGMap){ trkDirRenderer.setMap(null); }
+  trkGMap=new google.maps.Map(document.getElementById('gmap-trk'),{
+    center:{lat:userLat,lng:userLon},zoom:16,styles:gmapStyle(),
+    disableDefaultUI:true,zoomControl:true,gestureHandling:'cooperative'
+  });
+  trkDirRenderer=new google.maps.DirectionsRenderer({
+    suppressMarkers:true,
+    polylineOptions:{strokeColor:'#2a9d8f',strokeWeight:3,strokeOpacity:.35,icons:[{icon:{path:'M 0,-1 0,1',strokeOpacity:1,scale:3},offset:'0',repeat:'10px'}]}
+  });
+  trkDirRenderer.setMap(trkGMap);
+  // Destination marker
+  const cfg=CAT_CFG[activeCat]||{hex:'#2a9d8f'};
+  new google.maps.Marker({
+    position:{lat:geoPos.lat,lng:geoPos.lon},map:trkGMap,
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:11,fillColor:cfg.hex,fillOpacity:1,strokeColor:'#fff',strokeWeight:3},
+    zIndex:10
+  });
+  // User marker
+  trkUserMarker=new google.maps.Marker({
+    position:{lat:userLat,lng:userLon},map:trkGMap,zIndex:100,
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:9,fillColor:'#1a5fa8',fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5}
+  });
+  // Walked trail polyline
+  trkPathLine=new google.maps.Polyline({
+    path:[{lat:userLat,lng:userLon}],
+    strokeColor:'#1a5fa8',strokeOpacity:.9,strokeWeight:5,map:trkGMap
+  });
+  trkGMap.fitBounds(new google.maps.LatLngBounds({lat:userLat,lng:userLon},{lat:geoPos.lat,lng:geoPos.lon}),40);
+}
+
+function updateTrackStats(d,geoPos){
+  const distM=gpsEnabled?trkTotalDist:(elapsed*1.2);
+  const distMi=parseFloat(mToMi(distM));
+  const m=Math.floor(elapsed/60).toString().padStart(2,'0'),s=(elapsed%60).toString().padStart(2,'0');
+  const pace=distMi>0.01?((elapsed/60)/distMi).toFixed(1):'—';
+  const remDist=gpsEnabled?haversine(userLat,userLon,geoPos.lat,geoPos.lon):Math.max(0,destTotalDist-distM);
+  const prog=Math.min(Math.round((1-remDist/Math.max(destTotalDist,1))*100),100);
+  document.getElementById('t-dist').textContent=distMi.toFixed(2);
+  document.getElementById('t-time').textContent=m+':'+s;
+  document.getElementById('t-pace').textContent=pace;
+  document.getElementById('t-cal').textContent=Math.round(distMi*85);
+  document.getElementById('prog-fill').style.width=Math.max(prog,0)+'%';
+  document.getElementById('prog-pct').textContent=Math.max(prog,0)+'%';
+  if(prog>=100){ clearInterval(trackInt); stopWatchGPS(); finishRoute(distMi,elapsed,d); }
+}
+
+function stopTracking(){ clearInterval(trackInt); stopWatchGPS(); const mi=parseFloat(document.getElementById('t-dist').textContent)||0; finishRoute(mi,elapsed,DESTS.find(x=>x.id===selId)||{name:'Route',cat:''}); }
+
+function finishRoute(mi,secs,d){
+  const m=parseFloat(mi.toFixed(2));
+  if(m>0){
+    const today=DAYS[new Date().getDay()],weekKey=getWeekKey();
+    appState.weekMi=parseFloat((appState.weekMi+m).toFixed(2));
+    appState.totalRt++; appState.streak=Math.min(appState.streak+1,7);
+    refreshStats(); saveLocalStats();
+    saveLocalRoute({destName:d.name||'Route',miles:m,durationSecs:secs,category:d.cat||activeCat||'',dayOfWeek:today,walkDate:new Date().toISOString().slice(0,10),weekKey});
+    toast('✅ '+m+' mi saved — Great walk!');
+  }
+  setTimeout(()=>{ selId=null; renderMapMarkers(); renderDestPanel(); show('s-map','slide-back'); },700);
+}
+
+function getWeekKey(){ const d=new Date(),jan=new Date(d.getFullYear(),0,1),wk=Math.ceil((((d-jan)/86400000)+jan.getDay()+1)/7); return d.getFullYear()+'-W'+String(wk).padStart(2,'0'); }
+
+/* ══════════════════════════════════════════
+   WEEKLY LOG
+══════════════════════════════════════════ */
+function goLog(){ show('s-log','slide-in'); renderLogFromHistory(loadLocalHistory()); }
+function renderLogFromHistory(routes){
+  if(!routes||!routes.length){ document.getElementById('log-body').innerHTML='<div style="padding:2rem;text-align:center;color:var(--muted);font-size:12.5px;font-weight:700">🌿 Complete your first walk to see your history here!</div>'; return; }
+  const byWeek={};
+  routes.forEach(r=>{ const k=r.weekKey||'Unknown'; if(!byWeek[k]) byWeek[k]={week:'Week '+k,miles:0,routes:[],days:{Mon:0,Tue:0,Wed:0,Thu:0,Fri:0,Sat:0,Sun:0}}; byWeek[k].miles=parseFloat((byWeek[k].miles+(r.miles||0)).toFixed(2)); byWeek[k].routes.push({n:r.destName,mi:r.miles,d:r.dayOfWeek}); if(r.dayOfWeek in byWeek[k].days) byWeek[k].days[r.dayOfWeek]=parseFloat(((byWeek[k].days[r.dayOfWeek]||0)+(r.miles||0)).toFixed(2)); });
+  const weeks=Object.values(byWeek).sort((a,b)=>b.week.localeCompare(a.week));
+  const maxMi=Math.max(.01,...weeks.flatMap(w=>Object.values(w.days)));
+  document.getElementById('log-body').innerHTML=weeks.map(w=>
+    '<div class="wk"><div class="wk-hdr"><h4>'+w.week+'</h4><span class="wk-mi">'+w.miles+' mi</span></div>'+
+    '<div class="wk-routes">'+w.routes.map(r=>r.d+': '+r.n+' ('+r.mi+' mi)').join(' · ')+'</div>'+
+    Object.entries(w.days).map(([day,v])=>'<div class="bar-row"><span class="bar-d">'+day+'</span><div class="bar-t"><div class="bar-f" style="width:'+Math.round(v/maxMi*100)+'%"></div></div><span class="bar-v">'+(v>0?v:'')+'</span></div>').join('')+
+    '</div>').join('');
+}
+</script>
+</body>
+</html>
